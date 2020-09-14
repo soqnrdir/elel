@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+  <!-- namespace : 간단하게 하셔도 됩니다.
+ 		, 단, 매퍼클래스를 사용하실려면 완전한 이름의 클래스이름으로 지정 	
+  -->
+  
+<mapper namespace="com.study.member.dao.IMemberDao">
+
+<sql id="whereClause">
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchJob)">
+			AND mem_job = #{searchJob}
+		</if>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchLike)">
+			AND mem_like = #{searchLike}
+		</if>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchWord)">
+			<choose>
+				<when test='searchType == "N"'>
+					AND mem_name LIKE '%' || #{searchWord} || '%'
+				</when>
+				<when test='searchType == "I"'>
+					AND mem_id LIKE '%' || #{searchWord} || '%'
+				</when>
+				<when test='searchType == "H"'>
+					AND mem_hp LIKE '%' || #{searchWord} || '%'
+				</when>
+				<when test='searchType == "A"'>
+					AND mem_add1 LIKE '%' || #{searchWord} || '%'
+				</when>
+				<otherwise>
+					AND mem_name LIKE '%' || #{searchWord} || '%'
+				</otherwise>
+			</choose>
+		</if>
+	</sql>
+
+  <select id="getMemberCount" 
+  		  resultType="int" 
+  	  	  parameterType="com.study.member.vo.MemberSearchVO" >
+   	SELECT count(*)   		
+	FROM member 		
+	WHERE mem_delete = 'N'
+	<include refid="whereClause" />
+  </select>
+  
+  <select id="getMemberList" resultType="com.study.member.vo.MemberVO" parameterType="com.study.member.vo.MemberSearchVO" >
+  
+  <include refid="common.PRE_PAGING_SQL" />
+  
+  	 	    SELECT mem_id      , mem_pass    , mem_name       
+		 	   	, to_char(mem_bir, 'yyyy-mm-dd') as mem_bir    
+		 	    , mem_zip      , mem_add1                     
+			    , mem_add2    , mem_hp      , mem_mail       
+			    , mem_job                                    
+			    , b.comm_nm as mem_job_nm 					
+			    , mem_like                                   
+			    , c.comm_nm as mem_like_nm					 
+			    , mem_mileage                        
+			    , mem_delete                         
+			  FROM member, comm_code b, comm_code c   
+			  WHERE mem_job = b.comm_cd    			
+			  AND mem_like = c.comm_cd     			
+		      AND mem_delete = 'N'
+		      <include refid="whereClause" />
+	  		  ORDER BY mem_id DESC										 
+	<include refid="common.SUF_PAGING_SQL" />
+  </select>
+  
+  <select id="getMember" resultType="com.study.member.vo.MemberVO" parameterType="String">
+		SELECT mem_id      , mem_pass    , mem_name       
+		 , to_char(mem_bir, 'yyyy-mm-dd') as mem_bir        
+		 , mem_zip      , mem_add1                   
+	     , mem_add2    , mem_hp      , mem_mail         
+	     , mem_job                                      
+	     , (SELECT comm_nm from comm_code where comm_cd = mem_job) as mem_job_nm 
+	     , mem_like                                      
+	     , (SELECT comm_nm from comm_code where comm_cd = mem_like) as mem_like_nm 
+	     , mem_mileage                                 
+	     , mem_delete                                  
+	 	FROM member                                      
+	 	WHERE mem_id = #{memId}
+  </select>
+  
+  <insert id="insertMember" parameterType="com.study.member.vo.MemberVO">
+  	
+  		INSERT INTO member (               
+		      mem_id    , mem_pass    , mem_name      
+		    , mem_bir    , mem_zip    , mem_add1      
+		    , mem_add2    , mem_hp    , mem_mail      
+		    , mem_job    , mem_like    , mem_mileage  
+		    , mem_delete 
+			<![CDATA[                             
+		) VALUES (                                    
+	       #{memId} , #{memPass}, #{memName} 
+	     , #{memBir} , #{memZip}, #{memAdd1} 
+	     , #{memAdd2} , #{memHp}, #{memMail} 
+	     , #{memJob} , #{memLike}, 0 
+		    , 'N'
+	    )   
+				
+			]]>	
+  </insert>
+  
+  <update id="updateMember" parameterType="com.study.member.vo.MemberVO">
+   <![CDATA[                 					    
+  UPDATE member    
+     SET mem_name = #{memName}
+       , mem_bir = #{memBir}
+       , mem_zip = #{memZip}
+       , mem_add1 = #{memAdd1}
+       , mem_add2 = #{memAdd2}  	
+       , mem_hp = #{memHp} 
+       , mem_mail = #{memMail} 
+       , mem_job = #{memJob} 
+       , mem_like = #{memLike} 		
+   WHERE mem_id = #{memId}
+  	]]>	
+  </update>
+  
+  <delete id="deleteMember" parameterType="com.study.member.vo.MemberVO">
+    UPDATE member       
+	   SET mem_delete = 'Y'  
+	 WHERE mem_id    = #{memId}	   
+  </delete>
+  
+ <select id="getUserRoleByUserId" parameterType="String" resultType="String">
+ 	SELECT LISTAGG(role_nm, ', ') WITHIN GROUP(ORDER BY role_nm)
+ 	  FROM user_role 
+ 	 WHERE user_id = #{userId} 
+ </select>
+</mapper>
